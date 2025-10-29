@@ -1,11 +1,9 @@
 [package]
 name = "kitsune-stt"
+description = "Speech-to-Text model using Candle and Voxtral"
 version = "0.1.0"
 edition = "2021"
-keywords = ["blas", "tensor", "machine-learning"]
-categories = ["science"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
+license = "MIT"
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }

@@ -3,13 +3,16 @@ use std::path::PathBuf;
 use anyhow::Result;
 use hf_hub::{api::sync::Api, Repo, RepoType};
 
+/// Download model artifacts from Hugging Face Hub for a given model id.
+///
+/// This function fetches the `config.json`, a set of `safetensors` weight files
+/// (matching common Voxtral naming patterns) and a tokenizer file (tries
+/// `tekken.json` and `tokenizer/tokenizer.json`). It returns a tuple with the
+/// config, the list of safetensors files and the tokenizer path.
+///
 /// # Errors
 ///
-/// Returns an error if the model files cannot be downloaded.
-///
-/// # Panics
-///
-/// Panics if the model files cannot be downloaded.
+/// Returns an error if any of the network requests or file retrievals fail.
 pub fn model_files(model_id: &str) -> Result<((PathBuf, Vec<PathBuf>), PathBuf)> {
     let revision = "main";
 

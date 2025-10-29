@@ -1,33 +1,14 @@
-use candle::{Result, Tensor};
+use candle::Result;
 
-// https://github.com/facebookresearch/audiocraft/blob/69fea8b290ad1b4b40d28f92d1dfc0ab01dbab85/audiocraft/data/audio_utils.py#L57
-pub fn normalize_loudness(
-    wav: &Tensor,
-    sample_rate: u32,
-    loudness_compressor: bool,
-) -> Result<Tensor> {
-    let energy = wav.sqr()?.mean_all()?.sqrt()?.to_vec0::<f32>()?;
-    if energy < 2e-3 {
-        return Ok(wav.clone());
-    }
-    let wav_array = wav.to_vec1::<f32>()?;
-    let mut meter = crate::bs1770::ChannelLoudnessMeter::new(sample_rate);
-    meter.push(wav_array.into_iter());
-    let power = meter.as_100ms_windows();
-    let loudness = match crate::bs1770::gated_mean(power) {
-        None => return Ok(wav.clone()),
-        Some(gp) => gp.loudness_lkfs() as f64,
-    };
-    let delta_loudness = -14. - loudness;
-    let gain = 10f64.powf(delta_loudness / 20.);
-    let wav = (wav * gain)?;
-    if loudness_compressor {
-        wav.tanh()
-    } else {
-        Ok(wav)
-    }
-}
-
+/// Decode an audio file into a mono PCM float vector and its sample rate.
+///
+/// This function uses `symphonia` to probe and decode the given audio file
+/// path. It selects the first decodable audio track and converts samples to
+/// `f32` PCM samples in the range appropriate for the original sample format.
+/// The returned audio is mono (first channel) as `Vec<f32>` together with the
+/// sample rate (Hz).
+///
+/// Errors are returned via `candle::Error` on file/codec failures.
 pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)> {
     use symphonia::core::audio::{AudioBufferRef, Signal};
     use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
@@ -107,6 +88,13 @@ pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)>
     Ok((pcm_data, sample_rate))
 }
 
+/// Resample a PCM buffer from `sr_in` to `sr_out` using a high-quality FFT resampler.
+///
+/// - `pcm_in`: input mono PCM samples (f32)
+/// - `sr_in`: input sample rate in Hz
+/// - `sr_out`: desired output sample rate in Hz
+///
+/// Returns a newly allocated `Vec<f32>` with the resampled audio.
 pub fn resample(pcm_in: &[f32], sr_in: u32, sr_out: u32) -> Result<Vec<f32>> {
     use rubato::Resampler;
 

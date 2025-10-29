@@ -17,6 +17,7 @@ use super::download;
 
 const SAMPLE_RATE: u32 = 16000;
 
+/// The result of transcribing audio: decoded text and the produced token ids.
 #[derive(Debug, serde::Serialize)]
 pub struct TranscriptionResult {
     pub text: String,
@@ -102,7 +103,7 @@ impl VoxtralModel {
         };
 
         // Use the 128-mel filter bank
-    let mel_bytes = include_bytes!("../melfilters128.bytes");
+        let mel_bytes = include_bytes!("../melfilters128.bytes");
 
         let mut mel_filters = vec![0f32; mel_bytes.len() / 4];
         let mut cursor = Cursor::new(mel_bytes);
@@ -126,11 +127,18 @@ impl VoxtralModel {
         })
     }
 
+    /// Return the `Device` the model is placed on (CPU or CUDA device).
     pub fn device(&self) -> &Device {
         &self.device
     }
 }
 
+/// Run transcription with the Voxtral model given precomputed audio features.
+///
+/// This helper builds the token prompt (including the appropriate number of
+/// audio tokens), runs the model generation and decodes the newly generated
+/// tokens into a UTF-8 string. Returns the decoded string and the generated
+/// token ids.
 fn transcribe_with_voxtral(
     model: &VoxtralForConditionalGeneration,
     tokenizer: &Tekkenizer,

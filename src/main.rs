@@ -3,10 +3,9 @@ use clap::Parser;
 use hf_hub::api::sync::Api;
 use model::VoxtralModel;
 
+mod audio;
 mod download;
 mod model;
-mod audio;
-mod bs1770;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -26,15 +25,25 @@ struct Args {
 }
 
 #[cfg(feature = "cuda")]
+/// Return whether the build's default runtime should use CPU when `cuda` feature is enabled.
+///
+/// This version is selected when the `cuda` feature is enabled at compile time.
 fn use_cpu() -> bool {
     true
 }
 
 #[cfg(not(feature = "cuda"))]
+/// Return whether the build's default runtime should use CPU when `cuda` is not enabled.
+///
+/// This version is selected when the `cuda` feature is not enabled at compile time.
 fn use_cpu() -> bool {
     false
 }
 
+/// CLI entrypoint: parse arguments, load model, decode audio and run transcription.
+///
+/// The function returns a `Result` so failures in model loading, audio decoding
+/// or transcription are propagated to the caller.
 fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -48,8 +57,9 @@ fn main() -> Result<()> {
 
     println!("Model loaded successfully on device: {:?}", model.device());
 
-    let api = Api::new()?;
-    let dataset = api.dataset("Narsil/candle-examples".to_string());
+    // No longer used directly; keep creation if future code needs it. If you
+    // prefer to remove entirely, delete this line.
+    let _api = Api::new()?;
 
     let audio_file = if let Some(input) = args.input {
         std::path::PathBuf::from(input)

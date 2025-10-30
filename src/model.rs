@@ -53,7 +53,7 @@ impl VoxtralModel {
         }
 
         // Load model configuration (first entry)
-        let config = load_model_config(&files.first().unwrap())?;
+        let config = load_model_config(files.first().unwrap())?;
 
         // Load safetensors files (all entries except first and last)
         let safetensors_slice = &files[1..files.len() - 1];

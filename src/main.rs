@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use model::VoxtralModel;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 mod audio;
 mod download;
@@ -14,8 +17,6 @@ struct Args {
     cpu: bool,
 
     /// The input audio file to be processed (any format supported by Symphonia).
-    /// Alternatively this can be set to sample:jfk, sample:gb1, ... to fetch a
-    /// sample from: https://huggingface.co/datasets/Narsil/candle_demo/
     #[arg(long)]
     input: Option<String>,
 }
@@ -46,26 +47,34 @@ fn main() -> Result<()> {
     let use_cpu = args.cpu || !use_cpu();
 
     // Create model - equivalent to loading the model and processor in Python
-    let mut model = VoxtralModel::new(use_cpu).context("Failed to load Voxtral model")?;
+    let mut model = load_model(use_cpu).context("Failed to load Voxtral model")?;
 
     println!("Model loaded successfully on device: {:?}", model.device());
 
     let audio_file = if let Some(input) = args.input {
-        std::path::PathBuf::from(input)
+        PathBuf::from(input)
     } else {
         println!("No audio file submitted");
         return Ok(());
     };
 
-    let (audio_data, sample_rate) =
-        audio::pcm_decode(audio_file).context("Failed to decode audio file. Perhaps its not supported? See https://docs.rs/symphonia/latest/symphonia/index.html")?;
-
-    // Ensure audio matches model expectations: mono + 16 kHz sample rate.
-    // `audio::pcm_decode` already mixes to mono. Resample here so the model
-    // receives 16 kHz audio directly (the model will also resample if needed,
-    // but doing it here avoids double work and makes preprocessing explicit).
     let target_sr: u32 = 16_000;
-    let prepared_audio = if sample_rate != target_sr {
+    let prepared_audio =
+        decode_and_prepare(&audio_file, target_sr).context("Failed to decode/prepare audio")?;
+
+    transcribe_and_stream(&mut model, &prepared_audio, target_sr, &audio_file)
+}
+
+fn load_model(use_cpu: bool) -> Result<VoxtralModel> {
+    let model = VoxtralModel::new(use_cpu).context("Failed to create VoxtralModel")?;
+    Ok(model)
+}
+
+fn decode_and_prepare(path: &PathBuf, target_sr: u32) -> Result<Vec<f32>> {
+    let (audio_data, sample_rate) = audio::pcm_decode(path)
+        .context("Failed to decode audio file. Perhaps its not supported? See https://docs.rs/symphonia/latest/symphonia/index.html")?;
+
+    let prepared = if sample_rate != target_sr {
         println!(
             "Resampling audio from {} Hz to {} Hz to match model expectations...",
             sample_rate, target_sr
@@ -76,19 +85,20 @@ fn main() -> Result<()> {
         audio_data
     };
 
-    // Check duration and warn if longer than recommended encoder window (~15s).
-    let duration_s = prepared_audio.len() as f32 / target_sr as f32;
-    if duration_s > 15.0 {
-        println!(
-            "Warning: input audio is {:.1} seconds long. The model's encoder is configured for ~15s of audio per example (you may want to chunk long recordings). Proceeding to transcribe the full audio.",
-            duration_s
-        );
+    if prepared.is_empty() {
+        anyhow::bail!("No audio samples after decoding/resampling.");
     }
 
-    // Chunking: split long audio into windows with 10% overlap and transcribe
-    // each chunk separately. We use a default chunk length that matches the
-    // model's encoder capacity (≈15s). Overlap helps maintain context at
-    // boundaries.
+    Ok(prepared)
+}
+
+fn transcribe_and_stream(
+    model: &mut VoxtralModel,
+    prepared_audio: &[f32],
+    target_sr: u32,
+    audio_file: &Path,
+) -> Result<()> {
+    // Chunking parameters
     let chunk_seconds = 15.0_f32; // model's approx max (derived from config)
     let overlap_ratio = 0.10_f32; // 10% overlap
 
@@ -100,21 +110,22 @@ fn main() -> Result<()> {
         chunk_samples
     };
 
-    let mut texts: Vec<String> = Vec::new();
     let mut all_tokens: Vec<u32> = Vec::new();
 
-    if prepared_audio.is_empty() {
-        println!("No audio samples after decoding/resampling.");
-        return Ok(());
-    }
+    // Prepare output file: same stem as input file with .txt extension
+    let mut out_path = audio_file.to_path_buf();
+    out_path.set_extension("txt");
+    let out_file =
+        File::create(&out_path).context("Failed to create output file for transcription")?;
+    let mut writer = BufWriter::new(out_file);
 
     if prepared_audio.len() <= chunk_samples {
-        // Short audio: transcribe once
         let result = model
-            .transcribe_audio(&prepared_audio, target_sr)
+            .transcribe_audio(prepared_audio, target_sr)
             .context("Failed to transcribe audio with tokens")?;
-        println!("\n===================================================\n");
-        println!("{}", result.text);
+        writeln!(writer, "{}", result.text).context("Failed to write transcription to file")?;
+        writer.flush().ok();
+        println!("Transcription written to {}", out_path.display());
         return Ok(());
     }
 
@@ -137,8 +148,12 @@ fn main() -> Result<()> {
             .transcribe_audio(chunk, target_sr)
             .context("Failed to transcribe audio chunk")?;
 
-        // Collect results
-        texts.push(result.text.clone());
+        // Stream chunk text to output file immediately
+        writeln!(writer, "{}", result.text)
+            .context("Failed to write chunk transcription to file")?;
+        writer.flush().ok();
+
+        // Collect tokens for downstream use if needed
         all_tokens.extend(result.tokens);
 
         chunk_index += 1;
@@ -148,13 +163,7 @@ fn main() -> Result<()> {
         start += step;
     }
 
-    // Concatenate chunk texts with a space. Note: overlapping regions may
-    // produce duplicated words at chunk boundaries; post-processing can be
-    // added later to mitigate this.
-    let joined_text = texts.join(" ");
-
-    println!("\n===================================================\n");
-    println!("{}", joined_text);
+    println!("Transcription written to {}", out_path.display());
 
     Ok(())
 }

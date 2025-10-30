@@ -1,4 +1,4 @@
-use candle::Result;
+use candle_core::{Error, Result};
 
 /// Decode an audio file into a mono PCM float vector and its sample rate.
 ///
@@ -10,28 +10,22 @@ use candle::Result;
 ///
 /// Errors are returned via `candle::Error` on file/codec failures.
 pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)> {
-    use symphonia::core::audio::{AudioBufferRef, Signal};
+    use symphonia::core::audio::SampleBuffer;
     use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
-    use symphonia::core::conv::FromSample;
-
-    fn conv<T>(
-        samples: &mut Vec<f32>,
-        data: std::borrow::Cow<symphonia::core::audio::AudioBuffer<T>>,
-    ) where
-        T: symphonia::core::sample::Sample,
-        f32: symphonia::core::conv::FromSample<T>,
-    {
-        samples.extend(data.chan(0).iter().map(|v| f32::from_sample(*v)))
-    }
 
     // Open the media source.
-    let src = std::fs::File::open(path).map_err(candle::Error::wrap)?;
+    let src = std::fs::File::open(path.as_ref()).map_err(Error::wrap)?;
 
     // Create the media source stream.
     let mss = symphonia::core::io::MediaSourceStream::new(Box::new(src), Default::default());
 
     // Create a probe hint using the file's extension. [Optional]
-    let hint = symphonia::core::probe::Hint::new();
+    // This helps Symphonia choose the correct format reader based on
+    // the file extension when available.
+    let mut hint = symphonia::core::probe::Hint::new();
+    if let Some(ext) = path.as_ref().extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
 
     // Use the default options for metadata and format readers.
     let meta_opts: symphonia::core::meta::MetadataOptions = Default::default();
@@ -40,7 +34,7 @@ pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)>
     // Probe the media source.
     let probed = symphonia::default::get_probe()
         .format(&hint, mss, &fmt_opts, &meta_opts)
-        .map_err(candle::Error::wrap)?;
+        .map_err(Error::wrap)?;
     // Get the instantiated format reader.
     let mut format = probed.format;
 
@@ -49,7 +43,7 @@ pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)>
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-        .ok_or_else(|| candle::Error::Msg("no supported audio tracks".to_string()))?;
+        .ok_or_else(|| Error::Msg("no supported audio tracks".to_string()))?;
 
     // Use the default options for the decoder.
     let dec_opts: DecoderOptions = Default::default();
@@ -57,7 +51,7 @@ pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)>
     // Create a decoder for the track.
     let mut decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &dec_opts)
-        .map_err(|_| candle::Error::Msg("unsupported codec".to_string()))?;
+        .map_err(|_| Error::Msg("unsupported codec".to_string()))?;
     let track_id = track.id;
     let sample_rate = track.codec_params.sample_rate.unwrap_or(0);
     let mut pcm_data = Vec::new();
@@ -72,17 +66,30 @@ pub fn pcm_decode<P: AsRef<std::path::Path>>(path: P) -> Result<(Vec<f32>, u32)>
         if packet.track_id() != track_id {
             continue;
         }
-        match decoder.decode(&packet).map_err(candle::Error::wrap)? {
-            AudioBufferRef::F32(buf) => pcm_data.extend(buf.chan(0)),
-            AudioBufferRef::U8(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::U16(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::U24(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::U32(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::S8(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::S16(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::S24(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::S32(data) => conv(&mut pcm_data, data),
-            AudioBufferRef::F64(data) => conv(&mut pcm_data, data),
+        // Decode to an AudioBufferRef and copy samples into a SampleBuffer<f32>
+        // which provides interleaved f32 samples regardless of the packet's
+        // original sample type. Then average channels to produce mono.
+        let decoded = decoder.decode(&packet).map_err(Error::wrap)?;
+        let frames = decoded.frames();
+        let spec = *decoded.spec();
+
+        // Create a sample buffer of f32 and copy interleaved samples into it.
+        let mut sample_buf = SampleBuffer::<f32>::new(frames as u64, spec);
+        sample_buf.copy_interleaved_ref(decoded);
+        let interleaved = sample_buf.samples();
+        let channels = spec.channels.count();
+        if channels == 0 {
+            continue;
+        }
+
+        // Average channels into mono per frame.
+        for frame in 0..frames {
+            let base = frame * channels;
+            let mut sum = 0f32;
+            for ch in 0..channels {
+                sum += interleaved[base + ch];
+            }
+            pcm_data.push(sum / channels as f32);
         }
     }
     Ok((pcm_data, sample_rate))
@@ -102,13 +109,13 @@ pub fn resample(pcm_in: &[f32], sr_in: u32, sr_out: u32) -> Result<Vec<f32>> {
         Vec::with_capacity((pcm_in.len() as f64 * sr_out as f64 / sr_in as f64) as usize + 1024);
 
     let mut resampler = rubato::FftFixedInOut::<f32>::new(sr_in as usize, sr_out as usize, 1024, 1)
-        .map_err(candle::Error::wrap)?;
+        .map_err(candle_core::Error::wrap)?;
     let mut output_buffer = resampler.output_buffer_allocate(true);
     let mut pos_in = 0;
     while pos_in + resampler.input_frames_next() < pcm_in.len() {
         let (in_len, out_len) = resampler
             .process_into_buffer(&[&pcm_in[pos_in..]], &mut output_buffer, None)
-            .map_err(candle::Error::wrap)?;
+            .map_err(candle_core::Error::wrap)?;
         pos_in += in_len;
         pcm_out.extend_from_slice(&output_buffer[0][..out_len]);
     }
@@ -116,7 +123,7 @@ pub fn resample(pcm_in: &[f32], sr_in: u32, sr_out: u32) -> Result<Vec<f32>> {
     if pos_in < pcm_in.len() {
         let (_in_len, out_len) = resampler
             .process_partial_into_buffer(Some(&[&pcm_in[pos_in..]]), &mut output_buffer, None)
-            .map_err(candle::Error::wrap)?;
+            .map_err(candle_core::Error::wrap)?;
         pcm_out.extend_from_slice(&output_buffer[0][..out_len]);
     }
 

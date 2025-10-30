@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
-use candle::{utils, DType, Device, Tensor};
+use candle_core::{utils, DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::voxtral;
 use candle_transformers::models::voxtral::{
@@ -36,7 +36,7 @@ impl VoxtralModel {
     /// # Errors
     ///
     /// Returns an error if the model cannot be loaded.
-    pub fn new(model_id: &str, use_cpu: bool) -> Result<Self> {
+    pub fn new(use_cpu: bool) -> Result<Self> {
         // Determine device
         let device = if !use_cpu && utils::cuda_is_available() {
             Device::new_cuda(0).context("Failed to create CUDA device")?
@@ -44,18 +44,26 @@ impl VoxtralModel {
             Device::Cpu
         };
 
-        let (model_files, tokenizer_file) = download::model_files(model_id)?;
+        let files = download::model_files()?;
 
-        // Load model configuration
-        let config = load_model_config(&model_files.0)?;
+        if files.len() < 3 {
+            return Err(anyhow::anyhow!(
+                "Expected at least config, safetensors and tokenizer files from model_files"
+            ));
+        }
 
-        // Load safetensors files
-        let vb = load_model_weights(&model_files.1, &device)?;
+        // Load model configuration (first entry)
+        let config = load_model_config(&files.first().unwrap())?;
+
+        // Load safetensors files (all entries except first and last)
+        let safetensors_slice = &files[1..files.len() - 1];
+        let vb = load_model_weights(safetensors_slice, &device)?;
 
         // Create model
         let model = VoxtralForConditionalGeneration::new(&config, vb)?;
 
-        // Load tokenizer
+        // Load tokenizer (last entry)
+        let tokenizer_file = files.last().unwrap();
         let tokenizer = Tekkenizer::from_file(tokenizer_file).map_err(Error::msg)?;
 
         // Create cache
@@ -233,7 +241,7 @@ fn load_model_weights<'a>(model_files: &'a [PathBuf], device: &Device) -> Result
     let dtype = DType::F16; // F16 for memory efficiency
 
     // MEMORY OPTIMIZATION: Force garbage collection before loading
-    if let candle::Device::Cuda(_) = device {
+    if let Device::Cuda(_) = device {
         device.synchronize()?;
     }
 
@@ -241,7 +249,7 @@ fn load_model_weights<'a>(model_files: &'a [PathBuf], device: &Device) -> Result
     let vb = unsafe { VarBuilder::from_mmaped_safetensors(model_files, dtype, device)? };
 
     // MEMORY OPTIMIZATION: Force garbage collection after loading
-    if let candle::Device::Cuda(_) = device {
+    if let Device::Cuda(_) = device {
         device.synchronize()?;
     }
 

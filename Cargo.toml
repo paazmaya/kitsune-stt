@@ -1,9 +1,11 @@
 [package]
 name = "kitsune-stt"
-description = "Speech-to-Text model using Candle and Voxtral"
+description = "Speech-to-Text tool using Candle and Voxtral"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+homepage = "https://github.com/paazmaya/kitsune-stt"
+authors = ["Juga Paazmaya <paazmaya@yahoo.com>"]
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
@@ -22,7 +24,7 @@ tekken = { package = "tekken-rs", version = "0.1.1" }
 
 [dev-dependencies]
 # Testing utilities
-tempfile = "3"
+tempfile = "3.23.0"
 
 [features]
 default = []

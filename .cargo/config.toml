@@ -1,0 +1,22 @@
+# Windows-specific Cargo configuration for CUDA/cuDNN builds.
+# This file sets environment variables visible to build scripts when building on Windows.
+# Adjust the paths below to match your cuDNN/CUDA installation if needed.
+
+## env variables: Cargo does not support an `env` subtable under `target.*`.
+## Put these at the top-level so cargo build scripts see them. They will apply
+## to all builds, not just Windows. If you need per-target behavior, use a
+## small `build.rs` to conditionally emit link directives based on cfg!(windows).
+[env]
+# Directory that many native binding/build scripts look for when linking cuDNN.
+CUDNN_LIB_DIR = 'C:\Program Files\NVIDIA\CUDNN\v9.14\lib\13.0\x64'
+# Typical include directory for cuDNN headers (adjust if your layout differs).
+CUDNN_INCLUDE_DIR = 'C:\Program Files\NVIDIA\CUDNN\v9.14\include'
+# Optional CUDA toolkit path often needed by build tools (nvcc/clang wrappers)
+CUDA_HOME = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0'
+
+## Per-target build flags: make rustc emit a linker search path for MSVC.
+[target.'cfg(windows)']
+rustflags = [
+	"-L",
+	"native=C:\\Program Files\\NVIDIA\\CUDNN\\v9.14\\lib\\13.0\\x64",
+]

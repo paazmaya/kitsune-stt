@@ -2,6 +2,13 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+use tests::*;
+
 use candle_core::{utils, DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::voxtral;
@@ -18,7 +25,7 @@ use super::download;
 const SAMPLE_RATE: u32 = 16000;
 
 /// The result of transcribing audio: decoded text and the produced token ids.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptionResult {
     pub text: String,
     pub tokens: Vec<u32>,

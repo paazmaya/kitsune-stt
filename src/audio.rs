@@ -1,5 +1,14 @@
 use candle_core::{Error, Result};
 
+/// Sample rate used by the Voxtral model (16 kHz)
+pub const SAMPLE_RATE: u32 = 16_000;
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+use tests::*;
+
 /// Decode an audio file into a mono PCM float vector and its sample rate.
 ///
 /// This function uses `symphonia` to probe and decode the given audio file

@@ -22,3 +22,35 @@ target
 
 # Model download
 Voxtral-Mini-3B-2507/
+# Audio files and output
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.txt
+!tests/**/*.wav
+
+# Test artifacts
+coverage/
+*.profraw
+*.lcov
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+doc/
+
+# Temporary files
+tmp/
+temp/

@@ -3,6 +3,12 @@ use std::path::PathBuf;
 use anyhow::Result;
 use hf_hub::{api::sync::Api, Repo, RepoType};
 
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+use tests::*;
+
 /// Download model artifacts from Hugging Face Hub for a given model id.
 ///
 /// This function fetches the `config.json`, a set of `safetensors` weight files
@@ -22,9 +28,9 @@ pub fn model_files() -> Result<Vec<PathBuf>> {
     // https://huggingface.co/mistralai/Voxtral-Mini-3B-2507
     let model_files: Vec<&str> = vec![
         "config.json",
-        "tekken.json",
         "model-00001-of-00002.safetensors",
         "model-00002-of-00002.safetensors",
+        "tekken.json",
     ];
     let mut existing_files: Vec<&str> = Vec::new();
 

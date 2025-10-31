@@ -9,16 +9,18 @@ mod audio;
 mod download;
 mod model;
 
+// Re-export SAMPLE_RATE for use in tests
+pub use audio::SAMPLE_RATE;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// The input audio file to be processed (any format supported by Symphonia).
+    input: Option<PathBuf>,
+
     /// Run on CPU rather than on GPU.
     #[arg(long, default_value_t = false)]
     cpu: bool,
-
-    /// The input audio file to be processed (any format supported by Symphonia).
-    #[arg(long)]
-    input: Option<String>,
 }
 
 #[cfg(feature = "cuda")]
@@ -46,17 +48,17 @@ fn main() -> Result<()> {
 
     let use_cpu = args.cpu || !use_cpu();
 
-    // Create model - equivalent to loading the model and processor in Python
-    let mut model = load_model(use_cpu).context("Failed to load Voxtral model")?;
-
-    println!("Model loaded successfully on device: {:?}", model.device());
-
     let audio_file = if let Some(input) = args.input {
-        PathBuf::from(input)
+        input
     } else {
         println!("No audio file submitted");
         return Ok(());
     };
+
+    // Create model - equivalent to loading the model and processor in Python
+    let mut model = load_model(use_cpu).context("Failed to load Voxtral model")?;
+
+    println!("Model loaded successfully on device: {:?}", model.device());
 
     let target_sr: u32 = 16_000;
     let prepared_audio =

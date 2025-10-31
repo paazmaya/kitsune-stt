@@ -1,17 +1,19 @@
 # kitsune-stt
 
-An implementation in Rust of Voxtral speech recognition using candle.
+[![CI](https://github.com/paazmaya/kitsune-stt/actions/workflows/ci.yml/badge.svg)](https://github.com/paazmaya/kitsune-stt/actions/workflows/ci.yml)
+
+An Speech-to-Text implementation in Rust of Voxtral speech recognition using candle.
 
 ![Fox speaking to microphone and writing papers](./logo.png)
+
+The model used in the conversion is https://huggingface.co/mistralai/Voxtral-Mini-3B-2507
 
 ## Features
 
 - 🎤 **Speech-to-Text**: Convert audio to text using Voxtral-Mini-3B model
 - 🚀 **GPU Acceleration**: CUDA and CUDNN support for faster inference
-- 📦 **Audio Format Support**: WAV, MP3, FLAC, OGG, M4A, and more
+- 📦 **Audio Format and Codec Support**: WAV, MP3, FLAC, OGG, M4A, and more, see https://docs.rs/symphonia/latest/symphonia/index.html
 - ⚡ **Performance**: F16 memory optimization, chunked processing
-- 🧪 **Well Tested**: Comprehensive unit and integration tests
-- 📊 **CI/CD**: Automated testing and quality checks
 
 ## Quick Start
 
@@ -26,33 +28,34 @@ git clone https://github.com/paazmaya/kitsune-stt.git
 cd kitsune-stt
 ```
 
+There are two features, `cuda` and `cudnn`. They require additional libraries each:
+
+* https://developer.nvidia.com/cuda-toolkit
+* https://docs.nvidia.com/deeplearning/cudnn/installation/latest/backend.html
+
 ### Running
 
 **GPU (Recommended):**
 ```bash
-cargo run --features cuda,cudnn --release
+cargo run --all-features --release -- audio.wav
 ```
 
 **CPU Only:**
 ```bash
-cargo run --release
+cargo run --release -- --cpu audio.wav
 ```
 
 ### Transcribe Audio
 
+The following example commands would create a `audio.txt` in the same folder as the source audio file.
+
 ```bash
 # Transcribe an audio file
-cargo run --release -- --input path/to/your/audio.wav
+cargo run --release -- --input audio.wav
 
 # Force CPU mode
 cargo run --release --features cuda -- --cpu --input audio.wav
 ```
-
-## Command Line Options
-
-- `--cpu`: Force CPU mode (default: auto-detect GPU)
-- `--input`: Path to audio file (supports WAV, MP3, FLAC, OGG, M4A)
-
 ## Testing
 
 Run the complete test suite:
@@ -60,12 +63,6 @@ Run the complete test suite:
 ```bash
 # All tests
 cargo test
-
-# Unit tests only
-cargo test --lib
-
-# Integration tests
-cargo test --test integration_tests
 
 # With all features
 cargo test --all-features
@@ -88,24 +85,6 @@ cargo audit
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
-
-### Project Structure
-
-- `src/main.rs` - CLI interface and orchestration
-- `src/audio.rs` - Audio decoding and resampling
-- `src/model.rs` - Voxtral model loading and transcription
-- `src/download.rs` - Model file management
-- `tests/` - Integration tests
-
-### CI Pipeline
-
-Automated checks on every PR:
-- ✅ Multi-version Rust testing (stable, beta)
-- ✅ Code formatting verification
-- ✅ Clippy linting
-- ✅ Full test suite
-- ✅ Security audit
-- ✅ MSRV verification
 
 ## Requirements
 

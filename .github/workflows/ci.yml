@@ -1,6 +1,5 @@
 name: CI
-permissions:
-  contents: read
+permissions: {}
 
 on:
   push:
@@ -14,20 +13,24 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
       with:
         toolchain: stable
         components: rustfmt, clippy
 
     # Cache Cargo dependencies, https://github.com/Swatinem/rust-cache
     - name: Rust Cache
-      uses: Swatinem/rust-cache@v2.9.1
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
     - name: Install system dependencies (Ubuntu)
       run: |
@@ -36,7 +39,7 @@ jobs:
 
     # https://github.com/cargo-bins/cargo-binstall
     - name: Install binary installation tool for cargo
-      uses: cargo-bins/cargo-binstall@main
+      uses: cargo-bins/cargo-binstall@851112458b5f28a29e5bc14a690c3f283d9dcc6f # v1.26.2
 
     # https://github.com/xd009642/tarpaulin
     - name: Install code coverage tool

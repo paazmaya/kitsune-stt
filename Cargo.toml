@@ -5,7 +5,11 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 homepage = "https://github.com/paazmaya/kitsune-stt"
+repository = "https://github.com/paazmaya/kitsune-stt"
 authors = ["Juga Paazmaya <paazmaya@yahoo.com>"]
+keywords = ["speech-to-text", "stt", "audio", "candle", "voxtral"]
+categories = ["command-line-utilities", "multimedia::audio"]
+include = ["src/**/*", "melfilters128.bytes", "Cargo.toml", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }

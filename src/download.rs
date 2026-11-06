@@ -6,8 +6,6 @@ use hf_hub::{api::sync::Api, Repo, RepoType};
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-use tests::*;
 
 /// Download model artifacts from Hugging Face Hub for a given model id.
 ///

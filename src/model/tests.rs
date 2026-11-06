@@ -117,7 +117,7 @@ fn test_transcribe_with_voxtral_input_validation() {
     // Audio features must be 3D tensor
     // This test documents the expected input shape
 
-    let audio_dims = vec![1, 128, 1000]; // [batch, mels, time]
+    let audio_dims = [1, 128, 1000]; // [batch, mels, time]
 
     assert_eq!(audio_dims.len(), 3, "Audio features must be 3D");
     assert_eq!(audio_dims[1], 128, "Must have 128 mel bins");
@@ -164,7 +164,7 @@ fn test_padded_audio_chunk_size() {
     let chunk_size = 480000; // 30 seconds * 16000 Hz
     let audio = vec![0.5; 100000]; // 100k samples
 
-    let padded_audio = if audio.len() % chunk_size != 0 {
+    let padded_audio = if !audio.len().is_multiple_of(chunk_size) {
         let target_samples = ((audio.len() / chunk_size) + 1) * chunk_size;
         let mut padded = audio.clone();
         padded.resize(target_samples, 0.0);
@@ -231,7 +231,7 @@ fn test_generation_config_parameters() {
 #[test]
 fn test_tensor_shape_validation() {
     // Test the validation logic for audio features
-    let dims = vec![2, 128, 500]; // Valid: [batch, mels, time]
+    let dims = [2, 128, 500]; // Valid: [batch, mels, time]
 
     assert!(
         dims.len() == 3,
@@ -303,12 +303,10 @@ fn test_load_model_weights_memory_mapping() {
     // Test that the function signature accepts the expected parameters
     // Memory-mapped loading is used for efficiency
 
-    let model_files = vec![
-        std::path::PathBuf::from("model-00001-of-00002.safetensors"),
-        std::path::PathBuf::from("model-00002-of-00002.safetensors"),
-    ];
-    let device = &Device::Cpu;
-    let dtype = DType::F16;
+    let model_files = [std::path::PathBuf::from("model-00001-of-00002.safetensors"),
+        std::path::PathBuf::from("model-00002-of-00002.safetensors")];
+    let _device = &Device::Cpu;
+    let _dtype = DType::F16;
 
     // Verify we have the expected number of files
     assert_eq!(model_files.len(), 2);
@@ -397,12 +395,10 @@ fn test_parse_audio_config_defaults() {
 #[test]
 fn test_slice_operations_on_files() {
     // Test the slicing logic: files[1..files.len() - 1]
-    let files = vec![
-        std::path::PathBuf::from("config.json"),
+    let files = [std::path::PathBuf::from("config.json"),
         std::path::PathBuf::from("model-00001.safetensors"),
         std::path::PathBuf::from("model-00002.safetensors"),
-        std::path::PathBuf::from("tekken.json"),
-    ];
+        std::path::PathBuf::from("tekken.json")];
 
     let safetensors_slice = &files[1..files.len() - 1];
 

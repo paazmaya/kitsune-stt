@@ -6,8 +6,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-use tests::*;
 
 use candle_core::{utils, DType, Device, Tensor};
 use candle_nn::VarBuilder;

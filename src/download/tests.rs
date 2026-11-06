@@ -111,7 +111,7 @@ fn test_model_files_error_handling() {
         }
         Err(e) => {
             // Expected if network is unavailable or repo doesn't exist
-            assert!(e.to_string().len() > 0, "Error should have a message");
+            assert!(!e.to_string().is_empty(), "Error should have a message");
         }
     }
 }
@@ -119,12 +119,10 @@ fn test_model_files_error_handling() {
 #[test]
 fn test_required_files_structure() {
     // Verify that the expected file structure is correct
-    let expected_files = vec![
-        "config.json",
+    let expected_files = ["config.json",
         "tekken.json",
         "model-00001-of-00002.safetensors",
-        "model-00002-of-00002.safetensors",
-    ];
+        "model-00002-of-00002.safetensors"];
 
     // Verify the expected files match what the code looks for
     assert_eq!(expected_files.len(), 4);
@@ -163,7 +161,7 @@ fn test_file_existence_check() {
     fs::write(&test_file, "test content").unwrap();
 
     assert!(test_file.exists());
-    assert!(test_dir.path().join("nonexistent.txt").exists() == false);
+    assert!(!test_dir.path().join("nonexistent.txt").exists());
 }
 
 #[test]
@@ -172,7 +170,7 @@ fn test_download_api_pattern() {
     // hf_hub uses Repo::with_revision pattern
 
     let repo_name = "mistralai/Voxtral-Mini-3B-2507";
-    let repo_type = hf_hub::RepoType::Model;
+    let _repo_type = hf_hub::RepoType::Model;
     let revision = "main";
 
     // Verify the components used to construct the repo
@@ -184,14 +182,12 @@ fn test_download_api_pattern() {
 #[test]
 fn test_model_files_filtering_logic() {
     // Test the filtering logic used to find existing files
-    let model_files = vec![
-        "config.json",
+    let model_files = ["config.json",
         "tekken.json",
         "model-00001-of-00002.safetensors",
-        "model-00002-of-00002.safetensors",
-    ];
+        "model-00002-of-00002.safetensors"];
 
-    let existing_files = vec!["config.json", "tekken.json"];
+    let existing_files = ["config.json", "tekken.json"];
 
     // Find files that don't exist yet
     let needed_files: Vec<&str> = model_files

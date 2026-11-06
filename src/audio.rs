@@ -6,8 +6,6 @@ pub const SAMPLE_RATE: u32 = 16_000;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-use tests::*;
 
 /// Decode an audio file into a mono PCM float vector and its sample rate.
 ///

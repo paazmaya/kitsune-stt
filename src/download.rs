@@ -6,7 +6,6 @@ use hf_hub::{api::sync::Api, Repo, RepoType};
 #[cfg(test)]
 mod tests;
 
-
 /// Download model artifacts from Hugging Face Hub for a given model id.
 ///
 /// This function fetches the `config.json`, a set of `safetensors` weight files

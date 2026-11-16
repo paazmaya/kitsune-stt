@@ -303,8 +303,10 @@ fn test_load_model_weights_memory_mapping() {
     // Test that the function signature accepts the expected parameters
     // Memory-mapped loading is used for efficiency
 
-    let model_files = [std::path::PathBuf::from("model-00001-of-00002.safetensors"),
-        std::path::PathBuf::from("model-00002-of-00002.safetensors")];
+    let model_files = [
+        std::path::PathBuf::from("model-00001-of-00002.safetensors"),
+        std::path::PathBuf::from("model-00002-of-00002.safetensors"),
+    ];
     let _device = &Device::Cpu;
     let _dtype = DType::F16;
 
@@ -395,10 +397,12 @@ fn test_parse_audio_config_defaults() {
 #[test]
 fn test_slice_operations_on_files() {
     // Test the slicing logic: files[1..files.len() - 1]
-    let files = [std::path::PathBuf::from("config.json"),
+    let files = [
+        std::path::PathBuf::from("config.json"),
         std::path::PathBuf::from("model-00001.safetensors"),
         std::path::PathBuf::from("model-00002.safetensors"),
-        std::path::PathBuf::from("tekken.json")];
+        std::path::PathBuf::from("tekken.json"),
+    ];
 
     let safetensors_slice = &files[1..files.len() - 1];
 

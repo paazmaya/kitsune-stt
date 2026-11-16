@@ -119,10 +119,12 @@ fn test_model_files_error_handling() {
 #[test]
 fn test_required_files_structure() {
     // Verify that the expected file structure is correct
-    let expected_files = ["config.json",
+    let expected_files = [
+        "config.json",
         "tekken.json",
         "model-00001-of-00002.safetensors",
-        "model-00002-of-00002.safetensors"];
+        "model-00002-of-00002.safetensors",
+    ];
 
     // Verify the expected files match what the code looks for
     assert_eq!(expected_files.len(), 4);
@@ -182,10 +184,12 @@ fn test_download_api_pattern() {
 #[test]
 fn test_model_files_filtering_logic() {
     // Test the filtering logic used to find existing files
-    let model_files = ["config.json",
+    let model_files = [
+        "config.json",
         "tekken.json",
         "model-00001-of-00002.safetensors",
-        "model-00002-of-00002.safetensors"];
+        "model-00002-of-00002.safetensors",
+    ];
 
     let existing_files = ["config.json", "tekken.json"];
 
